@@ -1,0 +1,45 @@
+name: Check for New Slack Emojis
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # 毎15分ごとに実行(2025/4/7時点で無料枠は2000min/month。ここを触る際は枠を超えないように気をつけること。)
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Git
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run script
+        env:
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+        run: python main.py
+
+      - name: Set up GitHub authentication
+        run: |
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+
+      - name: Commit and push emoji list
+        run: |
+          git add emoji_list.json
+          git commit -m "Update emoji list" || echo "No changes to commit"
+          git push
